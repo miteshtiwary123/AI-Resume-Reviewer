@@ -28,6 +28,7 @@
 
 from sentence_transformers import SentenceTransformer, util
 import re
+import asyncio
 
 # Load once (fast, cached)
 model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
@@ -36,7 +37,7 @@ def clean_text(text: str) -> list[str]:
     """Extract lowercase words without punctuation"""
     return re.findall(r"\b\w+\b", text.lower())
 
-def extract_missing_keywords(resume_text: str, job_description: str) -> list[str]:
+async def extract_missing_keywords(resume_text: str, job_description: str) -> list[str]:
     # Extract words
     resume_words = set(clean_text(resume_text))
     jd_words = clean_text(job_description)
@@ -47,10 +48,12 @@ def extract_missing_keywords(resume_text: str, job_description: str) -> list[str
     if not missing_candidates:
         return []
 
-    # Embed resume + candidate words
-    resume_embedding = model.encode(resume_text, convert_to_tensor=True)
-    candidate_embeddings = model.encode(missing_candidates, convert_to_tensor=True)
-
+    # Embed resume + candidate words in background threads
+    resume_embedding, candidate_embeddings = await asyncio.gather(
+        asyncio.to_thread(model.encode, resume_text, convert_to_tensor=True),
+        asyncio.to_thread(model.encode, missing_candidates, convert_to_tensor=True)
+    )
+    
     # Compute cosine similarity
     similarities = util.cos_sim(candidate_embeddings, resume_embedding).cpu().numpy().flatten()
 
