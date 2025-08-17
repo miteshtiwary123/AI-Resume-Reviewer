@@ -13,7 +13,7 @@ async def upload_resume(file: UploadFile = File(...)):
     file_bytes = await file.read()
 
     # Extract Text
-    if file.content_type == "applicationj/pdf":
+    if file.content_type == "application/pdf":
         extracted_text = extract_text_from_pdf(file_bytes)
     else:
         extracted_text = extract_text_from_docx(file_bytes)
